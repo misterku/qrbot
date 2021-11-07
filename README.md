@@ -1,4 +1,4 @@
-# QR core bot
+# QR code bot
 This bot can be helpful if you need to generate [QR codes](https://en.wikipedia.org/wiki/QR_code) for URLs. It can be hosted on [Yandex cloud](https://cloud.yandex.ru).
 
 When configuring cloud function
