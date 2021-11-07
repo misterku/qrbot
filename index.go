@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,7 +17,7 @@ import (
 func handleResponse(rw http.ResponseWriter, err error) {
 	rw.WriteHeader(200)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s", err)
+		log.Printf("Error: %s", err)
 	}
 }
 
@@ -43,27 +44,22 @@ func DeserializeRequest(req *http.Request) (*tgbotapi.Update, error) {
 	return &update, nil
 }
 
-func validateURL(uri string) error {
+func extractURL(uri string) (string, error) {
 	_, err := url.ParseRequestURI(uri)
-	return err
-}
-
-func extractURL(uri string) (*string, error) {
-	err := validateURL(uri)
 	if err != nil {
-		return nil, err
+		return "", err
 	} else {
-		return &uri, nil
+		return uri, nil
 	}
 }
 
-func createTempFileWithQrCode(uri *string) (*os.File, error) {
+func createTempFileWithQrCode(uri string) (*os.File, error) {
 	tempFile, err := ioutil.TempFile("/tmp", "qrbot")
 	if err != nil {
 		return nil, err
 	}
 
-	if err := qrcode.WriteFile(*uri, qrcode.Medium, 128, tempFile.Name()); err != nil {
+	if err := qrcode.WriteFile(uri, qrcode.Medium, 128, tempFile.Name()); err != nil {
 		return nil, err
 	}
 	return tempFile, nil
