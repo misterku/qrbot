@@ -44,8 +44,26 @@ func DeserializeRequest(req *http.Request) (*tgbotapi.Update, error) {
 	return &update, nil
 }
 
+var allowedSchemas = []string{"https", "http", "ftp"}
+
 func extractURL(uri string) (string, error) {
-	_, err := url.ParseRequestURI(uri)
+	url, err := url.ParseRequestURI(uri)
+
+	if url.Host == "" {
+		return "", fmt.Errorf("host is empty")
+	}
+
+	validSchema := false
+	for _, scheme := range allowedSchemas {
+		if strings.EqualFold(scheme, url.Scheme) {
+			validSchema = true
+		}
+	}
+
+	if !validSchema {
+		return "", fmt.Errorf("schema is not allowed")
+	}
+
 	if err != nil {
 		return "", err
 	} else {
