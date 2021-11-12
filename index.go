@@ -14,6 +14,11 @@ import (
 	qrcode "github.com/skip2/go-qrcode"
 )
 
+const (
+	helpCommandResponse    = "To make QR core, just send URL to the chat"
+	invalidCommandResponse = "Unfortunately, this message is not valid command"
+)
+
 func handleResponse(rw http.ResponseWriter, err error) {
 	rw.WriteHeader(200)
 	if err != nil {
@@ -48,7 +53,9 @@ var allowedSchemas = []string{"https", "http", "ftp"}
 
 func extractURL(uri string) (string, error) {
 	url, err := url.ParseRequestURI(uri)
-
+	if err != nil {
+		return "", fmt.Errorf("URL is invalid")
+	}
 	if url.Host == "" {
 		return "", fmt.Errorf("host is empty")
 	}
@@ -64,11 +71,7 @@ func extractURL(uri string) (string, error) {
 		return "", fmt.Errorf("schema is not allowed")
 	}
 
-	if err != nil {
-		return "", err
-	} else {
-		return uri, nil
-	}
+	return uri, nil
 }
 
 func createTempFileWithQrCode(uri string) (*os.File, error) {
@@ -83,12 +86,16 @@ func createTempFileWithQrCode(uri string) (*os.File, error) {
 	return tempFile, nil
 }
 
-func handleCommand(msg messageContext, rw http.ResponseWriter, bot *tgbotapi.BotAPI) error {
-	if msg.Text == "/start" || msg.Text == "/help" {
-		return sendText(msg, "To make QR core, just send URL to the chat", bot)
+func getMessageForCommand(text string) string {
+	if text == "/start" || text == "/help" {
+		return helpCommandResponse
 	} else {
-		return sendText(msg, "Unfortunately, this message is not valid command", bot)
+		return invalidCommandResponse
 	}
+}
+
+func handleCommand(msg messageContext, rw http.ResponseWriter, bot *tgbotapi.BotAPI) error {
+	return sendText(msg, getMessageForCommand(msg.Text), bot)
 }
 
 func sendText(msg messageContext, text string, bot *tgbotapi.BotAPI) error {
