@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	qrcode "github.com/skip2/go-qrcode"
@@ -18,6 +19,9 @@ const (
 	helpCommandResponse    = "To make QR core, just send URL to the chat"
 	invalidCommandResponse = "Unfortunately, this message is not valid command"
 )
+
+var allowedSchemas = []string{"https", "http", "ftp"}
+var allowedSchemasToAdd = []string{"https", "http", "ftp"}
 
 func handleResponse(rw http.ResponseWriter, err error) {
 	rw.WriteHeader(200)
@@ -49,13 +53,43 @@ func DeserializeRequest(req *http.Request) (*tgbotapi.Update, error) {
 	return &update, nil
 }
 
-var allowedSchemas = []string{"https", "http", "ftp"}
+func fetchUrl(uri string) (int, error) {
+	client := http.Client{
+		Timeout: 1 * time.Second,
+	}
+
+	resp, err := client.Get(uri)
+	if err != nil {
+		return -1, err
+	}
+	return resp.StatusCode, nil
+}
+
+func tryToAddScheme(uri string) (string, error) {
+	for _, scheme := range allowedSchemasToAdd {
+		newUrl := scheme + "://" + uri
+		_, err := url.ParseRequestURI(newUrl)
+		if err != nil {
+			continue
+		}
+
+		code, err := fetchUrl(newUrl)
+		if err != nil {
+			continue
+		}
+		if code >= 200 && code < 400 {
+			return newUrl, nil
+		}
+	}
+	return "", fmt.Errorf("URL is invalid")
+}
 
 func extractURL(uri string) (string, error) {
 	url, err := url.ParseRequestURI(uri)
 	if err != nil {
-		return "", fmt.Errorf("URL is invalid")
+		return tryToAddScheme(uri)
 	}
+
 	if url.Host == "" {
 		return "", fmt.Errorf("host is empty")
 	}

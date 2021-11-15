@@ -40,10 +40,19 @@ func TestURLValidator(t *testing.T) {
 	}
 
 	isValidUrl("https://google.com")
+	isValidUrl("http://acm.sgu.ru")
 	isValidUrl("https://ya.ru")
 	isValidUrl("http://127.0.0.1")
 	isInvalidUrl("foo://bar")
 	isInvalidUrl("http://")
-	isInvalidUrl("vk.com")
+	isValidUrl("vk.com")
+	vkUrl, err := extractURL("vk.com")
+	if err != nil || vkUrl != "https://vk.com" {
+		t.Fatal()
+	}
+	rusUrl, err := extractURL("www.россия.рф")
+	if err != nil || rusUrl != "http://www.россия.рф" {
+		t.Fatal()
+	}
 	isValidUrl("http://www.россия.рф")
 }
