@@ -53,11 +53,29 @@ func DeserializeRequest(req *http.Request) (*tgbotapi.Update, error) {
 	return &update, nil
 }
 
-func fetchUrl(uri string) (int, error) {
-	client := http.Client{
-		Timeout: 1 * time.Second,
-	}
+var client = http.Client{
+	Timeout: 1 * time.Second,
+}
 
+func clckApiCheck(uri string) (string, error) {
+	requestUrl := fmt.Sprintf("https://clck.ru/--?url=%s", uri)
+	resp, err := client.Get(requestUrl)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+		bodyString := string(bodyBytes)
+		return bodyString, nil
+	}
+	return "", fmt.Errorf("impossible to shorten URL")
+}
+
+func fetchUrl(uri string) (int, error) {
 	resp, err := client.Get(uri)
 	if err != nil {
 		return -1, err
@@ -162,7 +180,21 @@ func NewMessageContext(update *tgbotapi.Update) (*messageContext, error) {
 	} else {
 		return nil, fmt.Errorf("couldn't get all necessary info from update")
 	}
+}
 
+func handleURLGeneration(msgContext *messageContext, bot *tgbotapi.BotAPI) error {
+	uri, err := extractURL(msgContext.Text)
+	if err != nil {
+		return sendText(*msgContext, "Unfortunately, this message is not valid URL", bot)
+	}
+
+	tempFile, err := createTempFileWithQrCode(uri)
+	defer os.Remove(tempFile.Name())
+	if err != nil {
+		return err
+	}
+
+	return sendPhoto(*msgContext, tempFile, bot)
 }
 
 func Handler(rw http.ResponseWriter, req *http.Request) {
@@ -188,21 +220,7 @@ func Handler(rw http.ResponseWriter, req *http.Request) {
 		err := handleCommand(*msgContext, rw, bot)
 		handleResponse(rw, err)
 	} else {
-		uri, err := extractURL(msgContext.Text)
-		if err != nil {
-			err := sendText(*msgContext, "Unfortunately, this message is not valid URL", bot)
-			handleResponse(rw, err)
-			return
-		}
-
-		tempFile, err := createTempFileWithQrCode(uri)
-		defer os.Remove(tempFile.Name())
-		if err != nil {
-			handleResponse(rw, err)
-			return
-		}
-
-		err = sendPhoto(*msgContext, tempFile, bot)
+		err := handleURLGeneration(msgContext, bot)
 		handleResponse(rw, err)
 	}
 }

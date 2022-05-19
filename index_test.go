@@ -24,6 +24,13 @@ func TestCommands(t *testing.T) {
 	checkInvalidCommand("/")
 }
 
+func UrlShortenerTests(t *testing.T) {
+	url, _ := clckApiCheck("http://github.com")
+	if url != "https://clck.ru/AJUUf" {
+		t.Fatal()
+	}
+}
+
 func TestURLValidator(t *testing.T) {
 	isValidUrl := func(url string) {
 		_, err := extractURL(url)
